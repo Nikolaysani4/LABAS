@@ -1,41 +1,22 @@
 import matplotlib.pyplot as plt
 import networkx as nx
-from collections import defaultdict, deque
+from collections import defaultdict
 
 class GraphAlgorithms:
     def __init__(self):
         self.graph = defaultdict(list)
         self.visited = set()
-        self.rec_stack = set()
         self.parent = {}
-        self.bridges = []
         self.disc = {}
         self.low = {}
         self.timer = 0
+        self.bridges = []
         
     def add_edge(self, u, v):
         """Добавить ребро в граф"""
         self.graph[u].append(v)
         # Для неориентированного графа добавляем обратное ребро
         self.graph[v].append(u)
-    
-    def find_cycle_dfs(self, v, parent=-1, cycle=[]):
-        """
-        Поиск цикла в графе методом DFS
-        Рекурсивный обход графа с отслеживанием родительского узла
-        """
-        self.visited.add(v)
-        
-        for u in self.graph[v]:
-            if u not in self.visited:
-                self.parent[u] = v
-                if self.find_cycle_dfs(u, v, cycle):
-                    return True
-            elif u != parent:
-                # Найден цикл
-                return True
-        
-        return False
     
     def find_articulation_points(self):
         """
@@ -126,32 +107,33 @@ def visualize_graph(graph_obj, title="Graph", bridges=None, articulation_points=
         for v in graph_obj.graph[u]:
             G.add_edge(u, v)
     
-    # Создаем визуализацию
-    plt.figure(figsize=(10, 8))
+    # Рисуем граф
     pos = nx.spring_layout(G, seed=42, k=2, iterations=50)
     
-    # Рисуем все узлы по умолчанию
-    node_colors = ['lightblue'] * len(G.nodes())
+    # Подготавливаем цвета узлов
+    node_colors = []
+    for node in G.nodes():
+        if articulation_points and node in articulation_points:
+            node_colors.append('red')
+        else:
+            node_colors.append('lightblue')
     
-    # Выделяем узловые вершины красным
-    if articulation_points:
-        for i, node in enumerate(G.nodes()):
-            if node in articulation_points:
-                node_colors[i] = 'red'
+    # Подготавливаем цвета рёбер
+    edge_colors = []
+    for u, v in G.edges():
+        is_bridge = False
+        if bridges:
+            for bridge_u, bridge_v in bridges:
+                if (u == bridge_u and v == bridge_v) or (u == bridge_v and v == bridge_u):
+                    is_bridge = True
+                    break
+        edge_colors.append('red' if is_bridge else 'black')
     
     # Рисуем узлы
     nx.draw_networkx_nodes(G, pos, node_color=node_colors, 
                           node_size=800, alpha=0.9)
     
     # Рисуем рёбра
-    edge_colors = ['black'] * len(G.edges())
-    if bridges:
-        for i, (u, v) in enumerate(G.edges()):
-            for bridge_u, bridge_v in bridges:
-                if (u == bridge_u and v == bridge_v) or (u == bridge_v and v == bridge_u):
-                    edge_colors[i] = 'red'
-                    break
-    
     nx.draw_networkx_edges(G, pos, edge_color=edge_colors, width=2)
     
     # Рисуем метки узлов
@@ -159,8 +141,6 @@ def visualize_graph(graph_obj, title="Graph", bridges=None, articulation_points=
     
     plt.title(title, fontsize=14, fontweight='bold')
     plt.axis('off')
-    plt.tight_layout()
-    return plt
 
 
 # Пример использования - Вариант 4
@@ -198,24 +178,6 @@ def main():
     bridges = algo.find_bridges()
     print(f"Мосты (критические рёбра): {bridges}")
     
-    # Визуализируем граф с выделением узловых вершин
-    plt1 = visualize_graph(
-        algo, 
-        title="Граф с выделением узловых вершин (красным)",
-        articulation_points=articulation_points
-    )
-    plt1.savefig('graph_articulation_points.png', dpi=300, bbox_inches='tight')
-    print("\n✓ Граф с узловыми вершинами сохранен: graph_articulation_points.png")
-    
-    # Визуализируем граф с выделением мостов
-    plt2 = visualize_graph(
-        algo,
-        title="Граф с выделением мостов (красным)",
-        bridges=bridges
-    )
-    plt2.savefig('graph_bridges.png', dpi=300, bbox_inches='tight')
-    print("✓ Граф с мостами сохранен: graph_bridges.png")
-    
     # Выводим детальный анализ
     print("\n" + "=" * 60)
     print("АНАЛИЗ ГРАФА")
@@ -225,6 +187,26 @@ def main():
     print(f"Количество узловых вершин: {len(articulation_points)}")
     print(f"Количество мостов: {len(bridges)}")
     
+    # Создаём фигуру с двумя подграфиками
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+    
+    # Первый подграфик - узловые вершины
+    plt.sca(ax1)
+    visualize_graph(
+        algo, 
+        title="Граф с выделением узловых вершин (красным)",
+        articulation_points=articulation_points
+    )
+    
+    # Второй подграфик - мосты
+    plt.sca(ax2)
+    visualize_graph(
+        algo,
+        title="Граф с выделением мостов (красным)",
+        bridges=bridges
+    )
+    
+    plt.tight_layout()
     plt.show()
 
 
